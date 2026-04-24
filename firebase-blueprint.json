@@ -1,0 +1,86 @@
+{
+  "entities": {
+    "Candidate": {
+      "title": "Candidate Profile",
+      "description": "Stable biographical and stance information for a political candidate.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Normalized name as ID" },
+        "name": { "type": "string" },
+        "position": { "type": "string" },
+        "location": { "type": "string", "enum": ["Texas City", "La Marque"] },
+        "district": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "background": { "type": "string" },
+        "stances": { "type": "array", "items": { "type": "string" } },
+        "highlights": { "type": "array", "items": { "type": "string" } },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": { "type": "string" },
+              "url": { "type": "string" }
+            }
+          }
+        },
+        "socials": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "platform": { "type": "string" },
+              "url": { "type": "string" }
+            }
+          }
+        },
+        "sourceVerified": { "type": "boolean" },
+        "socialsVerified": { "type": "boolean" },
+        "lastUpdated": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "position", "location", "background", "stances"]
+    },
+    "ElectionIntelligence": {
+      "title": "Real-time Election Insights",
+      "description": "Dynamic data including news, sentiment, and trends.",
+      "type": "object",
+      "properties": {
+        "location": { "type": "string" },
+        "news": { "type": "array", "items": { "$ref": "#/entities/NewsItem" } },
+        "sentiment": { 
+          "type": "object",
+          "properties": {
+            "positive": { "type": "number" },
+            "negative": { "type": "number" },
+            "neutral": { "type": "number" },
+            "summary": { "type": "string" }
+          }
+        },
+        "trends": { "type": "array", "items": { "type": "object", "properties": { "date": { "type": "string" }, "mentions": { "type": "number" } } } },
+        "patterns": { "type": "array", "items": { "type": "string" } },
+        "calendar": { "type": "array", "items": { "type": "object", "properties": { "date": { "type": "string" }, "event": { "type": "string" }, "description": { "type": "string" } } } },
+        "deepDive": { "type": "object", "properties": { "topic": { "type": "string" }, "analysis": { "type": "string" }, "impact": { "type": "string" } } },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "NewsItem": {
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "snippet": { "type": "string" },
+        "url": { "type": "string" },
+        "source": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "candidates/{candidateId}": {
+      "schema": "Candidate",
+      "description": "Primary storage for candidate profiles."
+    },
+    "electionIntelligence/{locationId}": {
+      "schema": "ElectionIntelligence",
+      "description": "Real-time analysis cache."
+    }
+  }
+}

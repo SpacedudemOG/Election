@@ -1,0 +1,56 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Helpers
+    function isSignedIn() { return request.auth != null; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // Component Validation: Candidate
+    function isValidCandidate(data) {
+      return data.name is string && data.name.size() <= 100 &&
+             data.position is string && data.position.size() <= 100 &&
+             data.location in ['Texas City', 'La Marque'] &&
+             data.background is string && data.background.size() <= 2000 &&
+             data.stances is list && data.stances.size() <= 10 &&
+             data.highlights is list && data.highlights.size() <= 10 &&
+             data.sources is list && data.sources.size() <= 10 &&
+             (data.district == null || (data.district is string && data.district.size() <= 50)) &&
+             data.lastUpdated == request.time;
+    }
+
+    // Component Validation: Intelligence
+    function isValidIntelligence(data) {
+      return data.query is string && data.query.size() <= 1000 &&
+             data.data is string && data.data.size() <= 1000000 &&
+             data.updatedAt == request.time;
+    }
+
+    // Collection: Candidates
+    match /candidates/{candidateId} {
+      allow read: if true;
+      // For this pilot, we allow public writes if strict schema is met
+      // In a production app, we would restrict this to authenticated admins
+      allow create: if isValidId(candidateId) && isValidCandidate(incoming());
+      allow update: if isValidCandidate(incoming()) && (
+        // Action: General Update (Sync)
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'name', 'position', 'district', 'imageUrl', 'background', 'stances', 
+          'highlights', 'sources', 'socials', 'sourceVerified', 'lastUpdated', 'location'
+        ])
+      );
+    }
+
+    // Collection: Election Intelligence (Cache)
+    match /electionIntelligence/{queryId} {
+      allow read: if true;
+      allow create, update: if isValidId(queryId) && isValidIntelligence(incoming());
+    }
+  }
+}

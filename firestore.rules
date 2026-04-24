@@ -1,0 +1,57 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Helpers
+    function isSignedIn() { return request.auth != null; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // Component Validation: Candidate
+    function isValidCandidate(data) {
+      return data.get('name', '') is string && data.get('name', '').size() <= 100 &&
+             data.get('position', '') is string && data.get('position', '').size() <= 100 &&
+             data.get('location', '') in ['Texas City', 'La Marque'] &&
+             data.get('background', '') is string && data.get('background', '').size() <= 3000 &&
+             data.get('stances', []) is list && data.get('stances', []).size() <= 15 &&
+             data.get('highlights', []) is list && data.get('highlights', []).size() <= 15 &&
+             data.get('sources', []) is list && data.get('sources', []).size() <= 15 &&
+             data.get('imageUrl', '') is string && data.get('imageUrl', '').size() <= 1000 &&
+             data.get('sourceVerified', false) is bool &&
+             (data.get('id', '') == '' || (data.get('id', '') is string && data.get('id', '').size() <= 128)) &&
+             (data.get('socials', []) == [] || (data.get('socials', []) is list && data.get('socials', []).size() <= 10)) &&
+             (data.get('district', '') == '' || (data.get('district', '') is string && data.get('district', '').size() <= 128)) &&
+             data.get('lastUpdated', request.time) == request.time;
+    }
+
+    // Component Validation: Intelligence
+    function isValidIntelligence(data) {
+      return data.get('query', '') is string && data.get('query', '').size() <= 1000 &&
+             data.get('data', '') is string && data.get('data', '').size() <= 1000000 &&
+             data.get('updatedAt', request.time) == request.time;
+    }
+
+    // Collection: Candidates
+    match /candidates/{candidateId} {
+      allow read: if true;
+      allow create: if isValidId(candidateId) && isValidCandidate(incoming());
+      allow update: if isValidCandidate(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'id', 'name', 'position', 'district', 'imageUrl', 'background', 'stances', 
+          'highlights', 'sources', 'socials', 'sourceVerified', 'lastUpdated', 'location'
+        ])
+      );
+    }
+
+    // Collection: Election Intelligence (Cache)
+    match /electionIntelligence/{queryId} {
+      allow read: if true;
+      allow create, update: if isValidId(queryId) && isValidIntelligence(incoming());
+    }
+  }
+}

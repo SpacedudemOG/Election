@@ -1,0 +1,5 @@
+{
+  "name": "Texas City & La Marque Election Tracker",
+  "description": "A real-time dashboard tracking local elections, campaigns, and public sentiment in Texas City and La Marque, TX using Google Search grounding.",
+  "requestFramePermissions": []
+}
